@@ -24,5 +24,5 @@ private:
     bool isAlphaString(const std::string& str);
     bool isValidInput(const std::string& str);
     void countCharacters(const std::string& str, std::unordered_map<char, int>& char_count);
-    void sendToServer(const std::string& data);
+    bool sendToServer(const std::string& data);
 };

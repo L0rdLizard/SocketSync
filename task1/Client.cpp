@@ -39,9 +39,10 @@ void Client::countCharacters(const std::string& str, std::unordered_map<char, in
 }
 
 void Client::inputThread(){
+    std::cout << "Type a string:" << std::endl;
     while (1){
         std::string input;
-        std::cout << "Type a string:" << std::endl;
+        
         std::getline(std::cin, input);
 
         if (!isValidInput(input)) {
@@ -67,7 +68,7 @@ void Client::inputThread(){
 }
 
 void Client::processThread() {
-    while (1){
+    while (true) {
         std::unique_lock<std::mutex> lock(buffer_mutex);
         cv.wait(lock, [this]() { return data_ready; });
 
@@ -79,33 +80,60 @@ void Client::processThread() {
 
         std::cout << "Sending data: " << data_to_send << std::endl;
         sendToServer(data_to_send);
+
+        std::cout << "Type a string:\n";
     }
 }
 
-void Client::sendToServer(const std::string& data) {
-    if (sockfd == -1) {
-        sockfd = socket(AF_INET, SOCK_STREAM, 0);
+
+bool Client::sendToServer(const std::string& data) {
+    while (true) {
         if (sockfd == -1) {
-            std::cerr << "Failed to create socket\n";
-            return;
+            sockfd = socket(AF_INET, SOCK_STREAM, 0);
+            if (sockfd == -1) {
+                std::cerr << "Failed to create socket\n";
+                std::this_thread::sleep_for(std::chrono::seconds(2));
+                continue;
+            }
+
+            sockaddr_in server_addr{};
+            server_addr.sin_family = AF_INET;
+            server_addr.sin_port = htons(server_port);
+            inet_pton(AF_INET, server_ip.c_str(), &server_addr.sin_addr);
+
+            if (connect(sockfd, (struct sockaddr*)&server_addr, sizeof(server_addr)) == -1) {
+                std::cerr << "Failed to connect to server. Retrying in 2 seconds...\n";
+                close(sockfd);
+                sockfd = -1;
+                std::this_thread::sleep_for(std::chrono::seconds(2));
+                continue;
+            }
+
+            // std::cout << "Connected to server!\n";
         }
 
-        sockaddr_in server_addr{};
-        server_addr.sin_family = AF_INET;
-        server_addr.sin_port = htons(server_port);
-        inet_pton(AF_INET, server_ip.c_str(), &server_addr.sin_addr);
-
-        if (connect(sockfd, (struct sockaddr*)&server_addr, sizeof(server_addr)) == -1) {
-            std::cerr << "Failed to connect to server\n";
+        ssize_t sent_bytes = send(sockfd, data.c_str(), data.length(), 0);
+        if (sent_bytes == -1) {
+            std::cerr << "Failed to send data. Closing socket and retrying...\n";
             close(sockfd);
             sockfd = -1;
-            return;
+            std::this_thread::sleep_for(std::chrono::seconds(2));
+            continue;
         }
+
+        char buffer[1];  
+        ssize_t recv_bytes = recv(sockfd, buffer, sizeof(buffer), MSG_PEEK);
+        if (recv_bytes == 0) {
+            // std::cerr << "Server closed connection. Reconnecting...\n";
+            close(sockfd);
+            sockfd = -1;
+        }
+
+        std::cout << std::endl;
+
+        return true;
     }
-
-    send(sockfd, data.c_str(), data.length(), 0);
 }
-
 
 Client::~Client() {
     if (sockfd != -1) close(sockfd);
