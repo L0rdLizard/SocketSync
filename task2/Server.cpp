@@ -26,7 +26,7 @@ void Server::start() {
 void Server::setupServer() {
     server_socket_ = socket(AF_INET, SOCK_STREAM, 0);
     if (server_socket_ < 0) {
-        perror("Ошибка при создании сокета");
+        perror("Error creating socket");
         exit(1);
     }
 
@@ -35,25 +35,25 @@ void Server::setupServer() {
     server_addr_.sin_port = htons(port_);
 
     if (bind(server_socket_, (struct sockaddr*)&server_addr_, sizeof(server_addr_)) < 0) {
-        perror("Ошибка при привязке сокета");
+        perror("Error binding socket");
         exit(1);
     }
 
     if (listen(server_socket_, 5) < 0) {
-        perror("Ошибка при прослушивании");
+        perror("Error listening on socket");
         exit(1);
     }
 
-    std::cout << "Сервер запущен, ожидаем подключения...\n";
+    std::cout << "Server started, waiting for connection...\n";
 }
 
 void Server::acceptClientConnection() {
     client_socket_ = accept(server_socket_, nullptr, nullptr);
     if (client_socket_ < 0) {
-        perror("Ошибка при принятии соединения");
+        perror("Error accepting connection");
         return;
     }
-    std::cout << "Клиент подключен\n";
+    std::cout << "Client connected\n";
 }
 
 void Server::processClientData() {
@@ -76,28 +76,28 @@ void Server::processClientData() {
     }
 }
 
-
 std::string Server::receiveDataFromClient() {
     char buffer[1024] = {0};
     ssize_t bytes_read = read(client_socket_, buffer, sizeof(buffer));
     if (bytes_read <= 0) {
-        std::cerr << "Ошибка при получении данных или клиент отключен.\n";
+        std::cerr << "Error receiving data or client disconnected.\n";
         return "";
     }
 
     return std::string(buffer, bytes_read);
 }
 
-
 void Server::printSortedCharacterCount(const std::unordered_map<char, int>& char_count) {
     std::vector<std::pair<char, int>> sorted_char_count(char_count.begin(), char_count.end());
     std::sort(sorted_char_count.begin(), sorted_char_count.end(),
-                [](const std::pair<char, int>& a, const std::pair<char, int>& b) {
-                    return a.second < b.second;
-                });
+            [](const std::pair<char, int>& a, const std::pair<char, int>& b) {
+                return (a.second == b.second) ? (a.first < b.first) : (a.second < b.second);
+            });
 
-    std::cout << "Результаты подсчёта символов:\n";
+
+    std::cout << "Character count results:\n";
     for (const auto& entry : sorted_char_count) {
         std::cout << entry.first << ": " << entry.second << "\n";
     }
+    std::cout << std::endl;
 }
