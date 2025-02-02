@@ -105,3 +105,9 @@ void Client::sendToServer(const std::string& data) {
 
     send(sockfd, data.c_str(), data.length(), 0);
 }
+
+
+Client::~Client() {
+    if (sockfd != -1) close(sockfd);
+    std::cout << "Client stopped.\n";
+}
